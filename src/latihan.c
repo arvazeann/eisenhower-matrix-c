@@ -45,6 +45,14 @@ struct DaftarTugas
     int idBerikut;
 };
 
+struct StatistikTugas
+{
+    int total;
+    int selesai;
+    int belumSelesai;
+    int overdue;
+};
+
 // Init
 void initDaftarTugas(struct DaftarTugas *daftar)
 {
@@ -496,6 +504,117 @@ int cariIndexByNama(struct DaftarTugas *daftar, const char *kueri)
     }
 
     return -1;
+}
+
+int cariSemuaIndexByNama(struct DaftarTugas *daftar, const char *kueri,
+                         int *hasil, int kapasitasHasil)
+{
+    if (daftar == NULL || daftar->data == NULL || kueri == NULL ||
+        kueri[0] == '\0' || daftar->jumlah < 0 ||
+        daftar->jumlah > daftar->kapasitas || kapasitasHasil < 0 ||
+        (kapasitasHasil > 0 && hasil == NULL))
+    {
+        return -1;
+    }
+
+    int jumlahCocok = 0;
+    for (int i = 0; i < daftar->jumlah; i++)
+    {
+        const char *nama = daftar->data[i].nama;
+        if (nama == NULL || !namaMengandung(nama, kueri))
+            continue;
+
+        if (jumlahCocok < kapasitasHasil)
+            hasil[jumlahCocok] = i;
+        jumlahCocok++;
+    }
+
+    return jumlahCocok;
+}
+
+struct Tugas *ambilDetailTugas(struct DaftarTugas *daftar, int id)
+{
+    int index = cariIndexByID(daftar, id);
+    return index < 0 ? NULL : &daftar->data[index];
+}
+
+struct StatistikTugas hitungStatistikTugas(struct DaftarTugas *daftar)
+{
+    struct StatistikTugas statistik = {0, 0, 0, 0};
+    if (daftar == NULL || daftar->data == NULL || daftar->jumlah < 0 ||
+        daftar->jumlah > daftar->kapasitas)
+    {
+        return statistik;
+    }
+
+    statistik.total = daftar->jumlah;
+    for (int i = 0; i < daftar->jumlah; i++)
+    {
+        struct Tugas *tugas = &daftar->data[i];
+        if (tugas->status == TUGAS_SELESAI)
+            statistik.selesai++;
+        else if (tugas->status == TUGAS_BELUM_SELESAI)
+        {
+            statistik.belumSelesai++;
+            if (cekStatusDeadline(tugas) == -1)
+                statistik.overdue++;
+        }
+    }
+
+    return statistik;
+}
+
+static void tampilkanTugasDenganFilter(struct DaftarTugas *daftar,
+                                      int filterStatus, int hanyaOverdue)
+{
+    if (daftar == NULL || daftar->data == NULL || daftar->jumlah < 0 ||
+        daftar->jumlah > daftar->kapasitas)
+    {
+        printf("Daftar tugas tidak valid.\n");
+        return;
+    }
+
+    int ditemukan = 0;
+    for (int i = 0; i < daftar->jumlah; i++)
+    {
+        struct Tugas *tugas = &daftar->data[i];
+        if (tugas->nama == NULL ||
+            (filterStatus >= 0 && (int)tugas->status != filterStatus) ||
+            (hanyaOverdue && (tugas->status != TUGAS_BELUM_SELESAI ||
+                              cekStatusDeadline(tugas) != -1)))
+        {
+            continue;
+        }
+
+        ditemukan = 1;
+        printf("ID: %d | Nama: %s | Deadline: %02d-%02d-%04d | %s\n",
+               tugas->id, tugas->nama, tugas->deadline.tanggal,
+               tugas->deadline.bulan, tugas->deadline.tahun,
+               tugas->status == TUGAS_SELESAI ? "Selesai" : "Belum selesai");
+    }
+
+    if (!ditemukan)
+        printf("Tidak ada tugas.\n");
+}
+
+void tampilkanSemuaTugas(struct DaftarTugas *daftar)
+{
+    tampilkanTugasDenganFilter(daftar, -1, 0);
+}
+
+void tampilkanTugasBelumSelesai(struct DaftarTugas *daftar)
+{
+    tampilkanTugasDenganFilter(daftar, TUGAS_BELUM_SELESAI, 0);
+}
+
+void tampilkanTugasSelesai(struct DaftarTugas *daftar)
+{
+    tampilkanTugasDenganFilter(daftar, TUGAS_SELESAI, 0);
+}
+
+void tampilkanTugasOverdue(struct DaftarTugas *daftar)
+{
+    tampilkanTugasDenganFilter(daftar, -1, 1);
 }
 
 int tambahTugas(struct DaftarTugas *daftar, const char *nama, int penting, struct Tanggal deadline)

@@ -368,23 +368,39 @@ static void rebuildView(void)
             wideToUtf8(wideQuery, query, sizeof(query));
         }
 
-        int hasMatch = query[0] == '\0' || cariIndexByNama(&g_daftar, query) >= 0;
-        if (hasMatch)
+        int *indeksCocok = NULL;
+        int jumlahCocok = g_daftar.jumlah;
+        if (query[0] != '\0')
         {
-            for (int i = 0; i < g_daftar.jumlah; i++)
+            indeksCocok = malloc((size_t)g_daftar.jumlah * sizeof(int));
+            if (g_daftar.jumlah > 0 && indeksCocok == NULL)
             {
-                struct Tugas *task = &g_daftar.data[i];
-                if (task->nama == NULL ||
-                    (query[0] != '\0' && !namaMengandung(task->nama, query)))
-                    continue;
-                if (g_page == HALAMAN_SELESAI && task->status != TUGAS_SELESAI)
-                    continue;
-                if (g_page == HALAMAN_OVERDUE &&
-                    (task->status != TUGAS_BELUM_SELESAI || cekStatusDeadline(task) != -1))
-                    continue;
-                g_visibleIDs[g_visibleCount++] = task->id;
+                setToast(L"Memori tidak cukup untuk mencari tugas.");
+                return;
+            }
+            jumlahCocok = cariSemuaIndexByNama(&g_daftar, query,
+                                               indeksCocok, g_daftar.jumlah);
+            if (jumlahCocok < 0)
+            {
+                free(indeksCocok);
+                return;
             }
         }
+
+        for (int i = 0; i < jumlahCocok; i++)
+        {
+            int index = query[0] == '\0' ? i : indeksCocok[i];
+            struct Tugas *task = &g_daftar.data[index];
+            if (task->nama == NULL)
+                continue;
+            if (g_page == HALAMAN_SELESAI && task->status != TUGAS_SELESAI)
+                continue;
+            if (g_page == HALAMAN_OVERDUE &&
+                (task->status != TUGAS_BELUM_SELESAI || cekStatusDeadline(task) != -1))
+                continue;
+            g_visibleIDs[g_visibleCount++] = task->id;
+        }
+        free(indeksCocok);
     }
 
     int selectedVisible = 0;
@@ -414,20 +430,14 @@ static void setPage(int page)
 
 static int countTasks(int statusFilter, int overdueOnly)
 {
-    int count = 0;
-    for (int i = 0; i < g_daftar.jumlah; i++)
-    {
-        struct Tugas *task = &g_daftar.data[i];
-        if (task->nama == NULL)
-            continue;
-        if (statusFilter >= 0 && (int)task->status != statusFilter)
-            continue;
-        if (overdueOnly &&
-            (task->status != TUGAS_BELUM_SELESAI || cekStatusDeadline(task) != -1))
-            continue;
-        count++;
-    }
-    return count;
+    struct StatistikTugas statistik = hitungStatistikTugas(&g_daftar);
+    if (overdueOnly)
+        return statistik.overdue;
+    if (statusFilter == TUGAS_SELESAI)
+        return statistik.selesai;
+    if (statusFilter == TUGAS_BELUM_SELESAI)
+        return statistik.belumSelesai;
+    return statistik.total;
 }
 
 static void drawMetric(HDC dc, RECT rect, const wchar_t *label, int count,
@@ -654,10 +664,10 @@ static void drawMatrixPage(HDC dc, RECT client)
 static void drawInspector(HDC dc)
 {
     drawRoundBox(dc, g_inspectorRect, C_SURFACE, C_BORDER, 9);
-    int index = cariIndexByID(&g_daftar, g_selectedID);
+    struct Tugas *task = ambilDetailTugas(&g_daftar, g_selectedID);
     RECT text = g_inspectorRect;
     InflateRect(&text, -16, -7);
-    if (index < 0)
+    if (task == NULL)
     {
         drawText(dc, L"Pilih tugas untuk melihat detail dan mengaktifkan tindakan.",
                  text, g_fontSmall, C_MUTED,
@@ -665,7 +675,6 @@ static void drawInspector(HDC dc)
         return;
     }
 
-    struct Tugas *task = &g_daftar.data[index];
     wchar_t name[512];
     wchar_t detail[700];
     utf8ToWide(task->nama, name, 512);
