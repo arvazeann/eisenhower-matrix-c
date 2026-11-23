@@ -53,7 +53,7 @@ struct StatistikTugas
     int overdue;
 };
 
-// Init
+// Inisialisasi dan pembersihan
 void initDaftarTugas(struct DaftarTugas *daftar)
 {
     if (daftar == NULL)
@@ -98,8 +98,7 @@ void freeDaftarTugas(struct DaftarTugas *daftar)
     daftar->kapasitas = 0;
     daftar->idBerikut = 1;
 }
-
-// Validasi Tanggal
+// Validasi tanggal
 struct Tanggal ambilTanggalSekarang(void)
 {
     time_t sekarang = time(NULL);
@@ -260,8 +259,7 @@ int hitungSelisihHari(struct Tanggal *tanggal)
 
     return (int)jumlahHari;
 }
-
-// Sorting
+// Pengurutan deadline
 int bandingkanTanggal(struct Tanggal a, struct Tanggal b)
 {
     if (a.tahun != b.tahun)
@@ -301,8 +299,7 @@ void insertionSortDeadline(struct DaftarTugas *daftar)
         daftar->data[j + 1] = key;
     }
 }
-
-// Klasifikasi deadline
+// Klasifikasi urgensi dan kuadran
 int cekStatusDeadline(struct Tugas *tugas)
 {
     if (tugas == NULL)
@@ -375,8 +372,7 @@ enum Kuadran tentukanKuadran(struct Tugas *tugas)
         }
     }
 }
-
-// CRUD
+// Validasi, kapasitas, dan pencarian
 int validasiInputTugas(const char *nama, int penting)
 {
     if (nama == NULL || nama[0] == '\0')
@@ -506,8 +502,8 @@ int cariIndexByNama(struct DaftarTugas *daftar, const char *kueri)
     return -1;
 }
 
-int cariSemuaIndexByNama(struct DaftarTugas *daftar, const char *kueri,
-                         int *hasil, int kapasitasHasil)
+// Fungsi ini ditambahkan oleh Codex.
+int cariSemuaIndexByNama(struct DaftarTugas *daftar, const char *kueri, int *hasil, int kapasitasHasil)
 {
     if (daftar == NULL || daftar->data == NULL || kueri == NULL ||
         kueri[0] == '\0' || daftar->jumlah < 0 ||
@@ -532,91 +528,14 @@ int cariSemuaIndexByNama(struct DaftarTugas *daftar, const char *kueri,
     return jumlahCocok;
 }
 
+// Fungsi ini ditambahkan oleh Codex.
 struct Tugas *ambilDetailTugas(struct DaftarTugas *daftar, int id)
 {
     int index = cariIndexByID(daftar, id);
     return index < 0 ? NULL : &daftar->data[index];
 }
 
-struct StatistikTugas hitungStatistikTugas(struct DaftarTugas *daftar)
-{
-    struct StatistikTugas statistik = {0, 0, 0, 0};
-    if (daftar == NULL || daftar->data == NULL || daftar->jumlah < 0 ||
-        daftar->jumlah > daftar->kapasitas)
-    {
-        return statistik;
-    }
-
-    statistik.total = daftar->jumlah;
-    for (int i = 0; i < daftar->jumlah; i++)
-    {
-        struct Tugas *tugas = &daftar->data[i];
-        if (tugas->status == TUGAS_SELESAI)
-            statistik.selesai++;
-        else if (tugas->status == TUGAS_BELUM_SELESAI)
-        {
-            statistik.belumSelesai++;
-            if (cekStatusDeadline(tugas) == -1)
-                statistik.overdue++;
-        }
-    }
-
-    return statistik;
-}
-
-static void tampilkanTugasDenganFilter(struct DaftarTugas *daftar,
-                                      int filterStatus, int hanyaOverdue)
-{
-    if (daftar == NULL || daftar->data == NULL || daftar->jumlah < 0 ||
-        daftar->jumlah > daftar->kapasitas)
-    {
-        printf("Daftar tugas tidak valid.\n");
-        return;
-    }
-
-    int ditemukan = 0;
-    for (int i = 0; i < daftar->jumlah; i++)
-    {
-        struct Tugas *tugas = &daftar->data[i];
-        if (tugas->nama == NULL ||
-            (filterStatus >= 0 && (int)tugas->status != filterStatus) ||
-            (hanyaOverdue && (tugas->status != TUGAS_BELUM_SELESAI ||
-                              cekStatusDeadline(tugas) != -1)))
-        {
-            continue;
-        }
-
-        ditemukan = 1;
-        printf("ID: %d | Nama: %s | Deadline: %02d-%02d-%04d | %s\n",
-               tugas->id, tugas->nama, tugas->deadline.tanggal,
-               tugas->deadline.bulan, tugas->deadline.tahun,
-               tugas->status == TUGAS_SELESAI ? "Selesai" : "Belum selesai");
-    }
-
-    if (!ditemukan)
-        printf("Tidak ada tugas.\n");
-}
-
-void tampilkanSemuaTugas(struct DaftarTugas *daftar)
-{
-    tampilkanTugasDenganFilter(daftar, -1, 0);
-}
-
-void tampilkanTugasBelumSelesai(struct DaftarTugas *daftar)
-{
-    tampilkanTugasDenganFilter(daftar, TUGAS_BELUM_SELESAI, 0);
-}
-
-void tampilkanTugasSelesai(struct DaftarTugas *daftar)
-{
-    tampilkanTugasDenganFilter(daftar, TUGAS_SELESAI, 0);
-}
-
-void tampilkanTugasOverdue(struct DaftarTugas *daftar)
-{
-    tampilkanTugasDenganFilter(daftar, -1, 1);
-}
-
+// Operasi CRUD
 int tambahTugas(struct DaftarTugas *daftar, const char *nama, int penting, struct Tanggal deadline)
 {
     if (daftar == NULL || daftar->data == NULL)
@@ -762,8 +681,7 @@ int hapusTugas(struct DaftarTugas *daftar, int id)
 
     return 1;
 }
-
-// Status Tugas
+// Perubahan status
 int ubahStatusTugas(struct DaftarTugas *daftar, int id, enum StatusTugas statusBaru)
 {
     if (daftar == NULL || daftar->data == NULL)
@@ -789,6 +707,90 @@ int ubahStatusTugas(struct DaftarTugas *daftar, int id, enum StatusTugas statusB
     daftar->data[index].status = statusBaru;
 
     return 1;
+}
+// Statistik dan tampilan tugas
+// Fungsi ini ditambahkan oleh Codex.
+struct StatistikTugas hitungStatistikTugas(struct DaftarTugas *daftar)
+{
+    struct StatistikTugas statistik = {0, 0, 0, 0};
+    if (daftar == NULL || daftar->data == NULL || daftar->jumlah < 0 ||
+        daftar->jumlah > daftar->kapasitas)
+    {
+        return statistik;
+    }
+
+    statistik.total = daftar->jumlah;
+    for (int i = 0; i < daftar->jumlah; i++)
+    {
+        struct Tugas *tugas = &daftar->data[i];
+        if (tugas->status == TUGAS_SELESAI)
+            statistik.selesai++;
+        else if (tugas->status == TUGAS_BELUM_SELESAI)
+        {
+            statistik.belumSelesai++;
+            if (cekStatusDeadline(tugas) == -1)
+                statistik.overdue++;
+        }
+    }
+
+    return statistik;
+}
+
+// Fungsi ini ditambahkan oleh Codex.
+static void tampilkanTugasDenganFilter(struct DaftarTugas *daftar, int filterStatus, int hanyaOverdue)
+{
+    if (daftar == NULL || daftar->data == NULL || daftar->jumlah < 0 ||
+        daftar->jumlah > daftar->kapasitas)
+    {
+        printf("Daftar tugas tidak valid.\n");
+        return;
+    }
+
+    int ditemukan = 0;
+    for (int i = 0; i < daftar->jumlah; i++)
+    {
+        struct Tugas *tugas = &daftar->data[i];
+        if (tugas->nama == NULL ||
+            (filterStatus >= 0 && (int)tugas->status != filterStatus) ||
+            (hanyaOverdue && (tugas->status != TUGAS_BELUM_SELESAI ||
+                              cekStatusDeadline(tugas) != -1)))
+        {
+            continue;
+        }
+
+        ditemukan = 1;
+        printf("ID: %d | Nama: %s | Deadline: %02d-%02d-%04d | %s\n",
+               tugas->id, tugas->nama, tugas->deadline.tanggal,
+               tugas->deadline.bulan, tugas->deadline.tahun,
+               tugas->status == TUGAS_SELESAI ? "Selesai" : "Belum selesai");
+    }
+
+    if (!ditemukan)
+        printf("Tidak ada tugas.\n");
+}
+
+// Fungsi ini ditambahkan oleh Codex.
+void tampilkanSemuaTugas(struct DaftarTugas *daftar)
+{
+    tampilkanTugasDenganFilter(daftar, -1, 0);
+}
+
+// Fungsi ini ditambahkan oleh Codex.
+void tampilkanTugasBelumSelesai(struct DaftarTugas *daftar)
+{
+    tampilkanTugasDenganFilter(daftar, TUGAS_BELUM_SELESAI, 0);
+}
+
+// Fungsi ini ditambahkan oleh Codex.
+void tampilkanTugasSelesai(struct DaftarTugas *daftar)
+{
+    tampilkanTugasDenganFilter(daftar, TUGAS_SELESAI, 0);
+}
+
+// Fungsi ini ditambahkan oleh Codex.
+void tampilkanTugasOverdue(struct DaftarTugas *daftar)
+{
+    tampilkanTugasDenganFilter(daftar, -1, 1);
 }
 
 // Tampilan matrix
@@ -865,8 +867,7 @@ void tampilkanMatrix(struct DaftarTugas *daftar)
 
     printf("\n=======================================\n");
 }
-
-// Simpan dan muat data
+// Penyimpanan data
 int simpanTugas(struct DaftarTugas *daftar, const char *namaFile)
 {
     if (daftar == NULL || namaFile == NULL || namaFile[0] == '\0')
@@ -1102,154 +1103,318 @@ int muatTugas(struct DaftarTugas *daftar, const char *namaFile)
 }
 
 #ifndef EISENHOWER_GUI
-int main()
+// Helper input CLI, ditambahkan oleh Codex.
+static int cliBacaBaris(const char *prompt, char *buffer, size_t ukuran)
 {
+    printf("%s", prompt);
+    if (fgets(buffer, (int)ukuran, stdin) == NULL)
+        return 0;
+
+    size_t panjang = strlen(buffer);
+    if (panjang > 0 && buffer[panjang - 1] != '\n' && !feof(stdin))
+    {
+        int karakter;
+        while ((karakter = getchar()) != '\n' && karakter != EOF)
+        {
+        }
+        printf("Input terlalu panjang. Coba lagi.\n");
+        return -1;
+    }
+
+    buffer[strcspn(buffer, "\r\n")] = '\0';
+    return 1;
+}
+
+static int cliBacaInt(const char *prompt, int minimum, int maksimum, int *hasil)
+{
+    char baris[128];
+    while (1)
+    {
+        int status = cliBacaBaris(prompt, baris, sizeof(baris));
+        if (status == 0)
+            return 0;
+        if (status < 0)
+            continue;
+
+        char *akhir;
+        long nilai = strtol(baris, &akhir, 10);
+        while (isspace((unsigned char)*akhir))
+            akhir++;
+
+        if (akhir != baris && *akhir == '\0' &&
+            nilai >= minimum && nilai <= maksimum)
+        {
+            *hasil = (int)nilai;
+            return 1;
+        }
+
+        printf("Masukkan angka antara %d dan %d.\n", minimum, maksimum);
+    }
+}
+
+static int cliBacaTanggal(const char *prompt, int izinkanTanggalLampau,
+                          struct Tanggal *hasil)
+{
+    char baris[128];
+    while (1)
+    {
+        int status = cliBacaBaris(prompt, baris, sizeof(baris));
+        if (status == 0)
+            return 0;
+        if (status < 0)
+            continue;
+
+        int tanggal, bulan, tahun, offset = 0;
+        char *akhir;
+        if (sscanf(baris, "%d-%d-%d%n", &tanggal, &bulan, &tahun, &offset) == 3)
+        {
+            akhir = baris + offset;
+            while (isspace((unsigned char)*akhir))
+                akhir++;
+            struct Tanggal nilai = {tanggal, bulan, tahun};
+            if (*akhir == '\0' && validasiTanggalKalender(&nilai) &&
+                (izinkanTanggalLampau || validasiTanggal(&nilai)))
+            {
+                *hasil = nilai;
+                return 1;
+            }
+        }
+
+        printf(izinkanTanggalLampau
+                   ? "Tanggal tidak valid. Gunakan format HH-BB-YYYY.\n"
+                   : "Tanggal tidak valid atau sudah lewat. Gunakan HH-BB-YYYY.\n");
+    }
+}
+
+static void cliTampilkanDetail(const struct Tugas *tugas)
+{
+    if (tugas == NULL)
+    {
+        printf("Tugas tidak ditemukan.\n");
+        return;
+    }
+    printf("ID       : %d\n", tugas->id);
+    printf("Nama     : %s\n", tugas->nama);
+    printf("Prioritas: %s\n", tugas->penting ? "Penting" : "Tidak penting");
+    printf("Deadline : %02d-%02d-%04d\n", tugas->deadline.tanggal,
+           tugas->deadline.bulan, tugas->deadline.tahun);
+    printf("Status   : %s\n", tugas->status == TUGAS_SELESAI ? "Selesai" : "Belum selesai");
+}
+
+static int cliSimpan(struct DaftarTugas *daftar, const char *fileData)
+{
+    if (!simpanTugas(daftar, fileData))
+    {
+        printf("Gagal menyimpan ke %s.\n", fileData);
+        return 0;
+    }
+    printf("Data tersimpan.\n");
+    return 1;
+}
+
+// main interaktif menggantikan skenario dummy; disusun oleh Codex.
+int main(void)
+{
+    const char *fileData = "data/tugas.txt";
     struct DaftarTugas daftar;
-
-    // 1. Inisialisasi
     initDaftarTugas(&daftar);
-
     if (daftar.data == NULL)
     {
-        printf("Gagal mengalokasikan memori.\n");
+        printf("Memori tidak cukup untuk memulai.\n");
         return 1;
     }
 
-    printf("=== PENGUJIAN BACKEND EISENHOWER MATRIX ===\n");
-
-    // 2. Memuat data
-    if (muatTugas(&daftar, "tugas_test.txt"))
+    FILE *file = fopen(fileData, "r");
+    if (file != NULL)
     {
-        printf("Data berhasil dimuat.\n");
+        fclose(file);
+        if (!muatTugas(&daftar, fileData))
+        {
+            printf("File %s tidak valid atau gagal dibaca; data tidak akan ditimpa.\n", fileData);
+            freeDaftarTugas(&daftar);
+            return 1;
+        }
+        printf("Memuat %d tugas dari %s.\n", daftar.jumlah, fileData);
     }
     else
     {
-        printf("File belum tersedia atau gagal dimuat.\n");
+        printf("File data belum ada; mulai dengan daftar kosong.\n");
     }
 
-    // Mulai dari data kosong agar hasil pengujian tidak bertambah tiap dijalankan.
-    for (int i = 0; i < daftar.jumlah; i++)
+    int selesai = 0;
+    while (!selesai)
     {
-        free(daftar.data[i].nama);
-        daftar.data[i].nama = NULL;
+        printf("\n=== PENGELOLA TUGAS ===\n"
+               "1. Tambah tugas\n"
+               "2. Tampilkan semua tugas\n"
+               "3. Tampilkan tugas belum selesai\n"
+               "4. Tampilkan tugas selesai\n"
+               "5. Tampilkan tugas overdue\n"
+               "6. Cari tugas berdasarkan nama\n"
+               "7. Lihat detail tugas\n"
+               "8. Edit tugas\n"
+               "9. Ubah status tugas\n"
+               "10. Hapus tugas\n"
+               "11. Tampilkan statistik\n"
+               "12. Tampilkan Eisenhower Matrix\n"
+               "13. Simpan sekarang\n"
+               "0. Simpan dan keluar\n");
+
+        int pilihan;
+        if (!cliBacaInt("Pilih menu: ", 0, 13, &pilihan))
+        {
+            printf("\nInput berakhir.\n");
+            break;
+        }
+
+        if (pilihan == 0)
+        {
+            if (cliSimpan(&daftar, fileData))
+                selesai = 1;
+            continue;
+        }
+
+        if (pilihan == 1)
+        {
+            char nama[200];
+            int penting;
+            struct Tanggal deadline;
+            int status = cliBacaBaris("Nama tugas: ", nama, sizeof(nama));
+            if (status == 0)
+                break;
+            if (status < 0 || !validasiInputTugas(nama, 0))
+            {
+                printf("Nama tugas tidak valid (maksimal 199 karakter; karakter | tidak boleh dipakai).\n");
+                continue;
+            }
+            if (!cliBacaInt("Penting? (1=ya, 0=tidak): ", 0, 1, &penting) ||
+                !cliBacaTanggal("Deadline (HH-BB-YYYY): ", 0, &deadline))
+                break;
+            if (tambahTugas(&daftar, nama, penting, deadline))
+            {
+                printf("Tugas ditambahkan dengan ID %d.\n", daftar.idBerikut - 1);
+                cliSimpan(&daftar, fileData);
+            }
+            else
+                printf("Tugas gagal ditambahkan.\n");
+        }
+        else if (pilihan >= 2 && pilihan <= 5)
+        {
+            if (pilihan == 2)
+                tampilkanSemuaTugas(&daftar);
+            else if (pilihan == 3)
+                tampilkanTugasBelumSelesai(&daftar);
+            else if (pilihan == 4)
+                tampilkanTugasSelesai(&daftar);
+            else
+                tampilkanTugasOverdue(&daftar);
+        }
+        else if (pilihan == 6)
+        {
+            char kueri[200];
+            int status = cliBacaBaris("Kata pencarian: ", kueri, sizeof(kueri));
+            if (status == 0)
+                break;
+            if (status < 0 || kueri[0] == '\0')
+            {
+                printf("Kata pencarian tidak boleh kosong.\n");
+                continue;
+            }
+            int *hasil = daftar.jumlah > 0
+                             ? malloc((size_t)daftar.jumlah * sizeof(int))
+                             : NULL;
+            if (daftar.jumlah > 0 && hasil == NULL)
+            {
+                printf("Memori tidak cukup untuk pencarian.\n");
+                continue;
+            }
+            int jumlah = cariSemuaIndexByNama(&daftar, kueri, hasil, daftar.jumlah);
+            if (jumlah <= 0)
+                printf("Tidak ada tugas yang cocok.\n");
+            else
+                for (int i = 0; i < jumlah; i++)
+                    cliTampilkanDetail(&daftar.data[hasil[i]]);
+            free(hasil);
+        }
+        else if (pilihan == 7 || pilihan == 8 || pilihan == 9 || pilihan == 10)
+        {
+            int id;
+            if (!cliBacaInt("ID tugas: ", 1, INT_MAX, &id))
+                break;
+            struct Tugas *tugas = ambilDetailTugas(&daftar, id);
+            if (pilihan == 7)
+            {
+                cliTampilkanDetail(tugas);
+                continue;
+            }
+            if (tugas == NULL)
+            {
+                printf("Tugas dengan ID %d tidak ditemukan.\n", id);
+                continue;
+            }
+            if (pilihan == 8)
+            {
+                char nama[200];
+                int penting;
+                struct Tanggal deadline;
+                cliTampilkanDetail(tugas);
+                int status = cliBacaBaris("Nama baru: ", nama, sizeof(nama));
+                if (status == 0)
+                    break;
+                if (status < 0 || !validasiInputTugas(nama, 0))
+                {
+                    printf("Nama tugas tidak valid.\n");
+                    continue;
+                }
+                if (!cliBacaInt("Penting? (1=ya, 0=tidak): ", 0, 1, &penting) ||
+                    !cliBacaTanggal("Deadline baru (HH-BB-YYYY): ", 1, &deadline))
+                    break;
+                if (editTugas(&daftar, id, nama, penting, deadline))
+                {
+                    printf("Tugas berhasil diperbarui.\n");
+                    cliSimpan(&daftar, fileData);
+                }
+                else
+                    printf("Tugas gagal diperbarui.\n");
+            }
+            else if (pilihan == 9)
+            {
+                enum StatusTugas statusBaru = tugas->status == TUGAS_SELESAI
+                                                  ? TUGAS_BELUM_SELESAI
+                                                  : TUGAS_SELESAI;
+                if (ubahStatusTugas(&daftar, id, statusBaru))
+                {
+                    printf("Status tugas diperbarui.\n");
+                    cliSimpan(&daftar, fileData);
+                }
+            }
+            else
+            {
+                int konfirmasi;
+                if (!cliBacaInt("Hapus tugas ini? (1=ya, 0=batal): ", 0, 1,
+                                &konfirmasi))
+                    break;
+                if (konfirmasi && hapusTugas(&daftar, id))
+                {
+                    printf("Tugas dihapus.\n");
+                    cliSimpan(&daftar, fileData);
+                }
+            }
+        }
+        else if (pilihan == 11)
+        {
+            struct StatistikTugas statistik = hitungStatistikTugas(&daftar);
+            printf("Total: %d | Selesai: %d | Belum selesai: %d | Overdue: %d\n",
+                   statistik.total, statistik.selesai,
+                   statistik.belumSelesai, statistik.overdue);
+        }
+        else if (pilihan == 12)
+            tampilkanMatrix(&daftar);
+        else if (pilihan == 13)
+            cliSimpan(&daftar, fileData);
     }
-    daftar.jumlah = 0;
-    daftar.idBerikut = 1;
 
-    // 3. Menampilkan data awal
-    printf("\nJumlah tugas awal: %d\n", daftar.jumlah);
-
-    // 4. Menambahkan tugas pengujian
-    struct Tanggal deadline1 = {25, 11, 2026};
-    struct Tanggal deadline2 = {23, 11, 2026};
-    struct Tanggal deadline3 = {28, 11, 2026};
-
-    int idPointer = 0;
-    int idLaporan = 0;
-
-    if (tambahTugas(&daftar, "Belajar Pointer", 1, deadline1))
-    {
-        idPointer = daftar.idBerikut - 1;
-        printf("Berhasil menambahkan Belajar Pointer.\n");
-    }
-
-    if (tambahTugas(&daftar, "Mengerjakan Laporan", 1, deadline2))
-    {
-        idLaporan = daftar.idBerikut - 1;
-        printf("Berhasil menambahkan Mengerjakan Laporan.\n");
-    }
-
-    if (tambahTugas(&daftar, "Belajar Enum", 0, deadline3))
-    {
-        printf("Berhasil menambahkan Belajar Enum.\n");
-    }
-
-    // 5. Menampilkan seluruh data
-    printf("\n=== DATA SETELAH PENAMBAHAN ===\n");
-
-    for (int i = 0; i < daftar.jumlah; i++)
-    {
-        printf(
-            "ID: %d | Nama: %s | Deadline: %02d-%02d-%d | Status: %d\n",
-            daftar.data[i].id,
-            daftar.data[i].nama,
-            daftar.data[i].deadline.tanggal,
-            daftar.data[i].deadline.bulan,
-            daftar.data[i].deadline.tahun,
-            daftar.data[i].status);
-    }
-
-    tampilkanMatrix(&daftar);
-
-    // 6. Menguji pencarian ID
-    int idCari = idPointer;
-    int index = cariIndexByID(&daftar, idCari);
-
-    if (index != -1)
-    {
-        printf("\nTugas dengan ID %d ditemukan: %s\n",
-               idCari, daftar.data[index].nama);
-    }
-    else
-    {
-        printf("\nTugas tidak ditemukan.\n");
-    }
-
-    // 7. Menguji edit tugas
-    struct Tanggal deadlineBaru = {30, 11, 2026};
-
-    if (editTugas(
-            &daftar,
-            idCari,
-            "Belajar Advanced Pointer",
-            1,
-            deadlineBaru))
-    {
-        printf("Berhasil mengedit tugas ID %d.\n", idCari);
-    }
-
-    // 8. Menguji perubahan status
-    if (ubahStatusTugas(&daftar, idCari, TUGAS_SELESAI))
-    {
-        printf("Status tugas berhasil diubah.\n");
-    }
-
-    // 9. Menguji penghapusan
-    if (hapusTugas(&daftar, idLaporan))
-    {
-        printf("Tugas ID 2 berhasil dihapus.\n");
-    }
-
-    // 10. Menampilkan hasil akhir
-    printf("\n=== DATA AKHIR ===\n");
-
-    for (int i = 0; i < daftar.jumlah; i++)
-    {
-        printf(
-            "ID: %d | Nama: %s | Deadline: %02d-%02d-%d | Status: %d\n",
-            daftar.data[i].id,
-            daftar.data[i].nama,
-            daftar.data[i].deadline.tanggal,
-            daftar.data[i].deadline.bulan,
-            daftar.data[i].deadline.tahun,
-            daftar.data[i].status);
-    }
-
-    // 11. Menyimpan data
-    if (simpanTugas(&daftar, "tugas_test.txt"))
-    {
-        printf("\nData berhasil disimpan.\n");
-    }
-    else
-    {
-        printf("\nGagal menyimpan data.\n");
-    }
-
-    // 12. Membersihkan memori
     freeDaftarTugas(&daftar);
-
-    printf("Memori berhasil dibebaskan.\n");
-
     return 0;
 }
 #endif
