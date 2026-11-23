@@ -6,10 +6,11 @@ Aplikasi desktop Windows untuk mengelola tugas dengan backend C yang sudah ada d
 
 Gunakan GCC MinGW-w64, misalnya terminal MSYS2 UCRT64. Jalankan `build_gui.bat`, lalu buka `EisenhowerMatrix.exe`. Data aplikasi disimpan di `tugas.txt` di folder yang sama dengan executable.
 
-Untuk membangun dari terminal:
+Build manual dari terminal MSYS2 UCRT64:
 
 ```sh
-gcc gui_win32.c -o EisenhowerMatrix.exe -std=c11 -Wall -Wextra -Wpedantic -mwindows -lcomctl32
+windres gui_resources.rc -O coff -o gui_resources.o
+gcc gui_win32.c gui_resources.o -o EisenhowerMatrix.exe -std=c11 -Wall -Wextra -Wpedantic -mwindows -lcomctl32
 ```
 
 ## Fitur
@@ -19,7 +20,9 @@ gcc gui_win32.c -o EisenhowerMatrix.exe -std=c11 -Wall -Wextra -Wpedantic -mwind
 - Simpan otomatis setelah perubahan, serta tombol simpan manual.
 - Cari nama tugas dengan pencarian linear tanpa membedakan huruf besar/kecil.
 - Filter semua, belum selesai, selesai, dan overdue.
-- Tampilan Matrix dengan empat grup kuadran, urgensi, deadline, dan status.
+- Dashboard ringkasan total tugas, selesai, belum selesai, dan overdue.
+- Tampilan Matrix empat kuadran sebagai fokus dashboard, dengan urgensi dan deadline.
 - Panel detail tugas yang menampilkan sisa hari, urgensi, dan kuadran.
+- Navigasi sidebar, empty state, feedback aksi, dan daftar yang mendukung scroll.
 
 Format deadline pada form adalah `TT-BB-YYYY`. Tugas overdue dapat diedit agar deadline dapat diperbaiki.

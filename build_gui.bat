@@ -7,7 +7,16 @@ if errorlevel 1 (
     exit /b 1
 )
 
-gcc "%~dp0gui_win32.c" -o "%~dp0EisenhowerMatrix.exe" -std=c11 -Wall -Wextra -Wpedantic -mwindows -lcomctl32
+where windres >nul 2>nul
+if errorlevel 1 (
+    echo Windres tidak ditemukan. Gunakan terminal MSYS2 UCRT64.
+    exit /b 1
+)
+
+windres "%~dp0gui_resources.rc" -O coff -o "%~dp0gui_resources.o"
+if errorlevel 1 exit /b 1
+
+gcc "%~dp0gui_win32.c" "%~dp0gui_resources.o" -o "%~dp0EisenhowerMatrix.exe" -std=c11 -Wall -Wextra -Wpedantic -mwindows -lcomctl32
 if errorlevel 1 exit /b 1
 
 echo Build berhasil: "%~dp0EisenhowerMatrix.exe"
