@@ -533,8 +533,8 @@ int cariSemuaIndexByNama(struct DaftarTugas *daftar, const char *kueri, int *has
 
 // Fungsi ini ditambahkan oleh Codex.
 int ambilIndexTugasDenganFilter(struct DaftarTugas *daftar, int statusFilter,
-                               int hanyaOverdue, const char *kueri,
-                               int *hasil, int kapasitasHasil)
+                                int hanyaOverdue, const char *kueri,
+                                int *hasil, int kapasitasHasil)
 {
     if (daftar == NULL || daftar->data == NULL || daftar->jumlah < 0 ||
         daftar->jumlah > daftar->kapasitas || kapasitasHasil < 0 ||
@@ -799,9 +799,11 @@ static void tampilkanTugasDenganFilter(struct DaftarTugas *daftar, int filterSta
         }
 
         ditemukan = 1;
-        printf("ID: %d | Nama: %s | Deadline: %02d-%02d-%04d | %s\n",
-               tugas->id, tugas->nama, tugas->deadline.tanggal,
-               tugas->deadline.bulan, tugas->deadline.tahun,
+        printf("\n#%d  %s\n", tugas->id, tugas->nama);
+        printf("    Deadline: %02d-%02d-%04d | Prioritas: %s | Status: %s\n",
+               tugas->deadline.tanggal, tugas->deadline.bulan,
+               tugas->deadline.tahun,
+               tugas->penting ? "Penting" : "Tidak penting",
                tugas->status == TUGAS_SELESAI ? "Selesai" : "Belum selesai");
     }
 
@@ -843,69 +845,197 @@ void tampilkanMatrix(struct DaftarTugas *daftar)
         return;
     }
 
-    const char *judulKuadran[] =
-        {
-            "I. PENTING & MENDESAK",
-            "II. PENTING & TIDAK MENDESAK",
-            "III. TIDAK PENTING & MENDESAK",
-            "IV. TIDAK PENTING & TIDAK MENDESAK"};
-
-    printf("\n========== EISENHOWER MATRIX ==========\n");
-
-    for (int q = PENTING_MENDESAK;
-         q <= TIDAK_PENTING_TIDAK_MENDESAK;
-         q++)
-    {
-        printf("\n[ %s ]\n", judulKuadran[q]);
-
-        int ditemukan = 0;
-
-        for (int i = 0; i < daftar->jumlah; i++)
-        {
-            if (daftar->data[i].nama == NULL ||
-                daftar->data[i].status != TUGAS_BELUM_SELESAI)
-                continue;
-
-            if (tentukanKuadran(&daftar->data[i]) != (enum Kuadran)q)
-                continue;
-
-            ditemukan = 1;
-
-            printf("ID       : %d\n", daftar->data[i].id);
-            printf("Nama     : %s\n", daftar->data[i].nama);
-            printf("Deadline : %02d-%02d-%04d\n",
-                   daftar->data[i].deadline.tanggal,
-                   daftar->data[i].deadline.bulan,
-                   daftar->data[i].deadline.tahun);
-            printf("-----------------------------\n");
-        }
-
-        if (!ditemukan)
-            printf("Tidak ada tugas.\n");
-    }
-
-    printf("\n[ TUGAS DENGAN DEADLINE TIDAK VALID ]\n");
-
-    int ditemukan = 0;
+    const char *judulKuadran[4] = {
+        "I. PENTING & MENDESAK",
+        "II. PENTING & TIDAK MENDESAK",
+        "III. TIDAK PENTING & MENDESAK",
+        "IV. TIDAK PENTING & TIDAK MENDESAK"};
+    struct Tugas **isiKuadran[4] = {NULL, NULL, NULL, NULL};
+    int jumlahKuadran[4] = {0, 0, 0, 0};
 
     for (int i = 0; i < daftar->jumlah; i++)
     {
-        if (daftar->data[i].nama == NULL ||
-            daftar->data[i].status != TUGAS_BELUM_SELESAI)
-            continue;
-
-        if (tentukanKuadran(&daftar->data[i]) != KUADRAN_TIDAK_VALID)
-            continue;
-
-        ditemukan = 1;
-        printf("ID   : %d\n", daftar->data[i].id);
-        printf("Nama : %s\n", daftar->data[i].nama);
+        struct Tugas *tugas = &daftar->data[i];
+        if (tugas->nama != NULL && tugas->status == TUGAS_BELUM_SELESAI)
+        {
+            enum Kuadran kuadran = tentukanKuadran(tugas);
+            if (kuadran >= PENTING_MENDESAK &&
+                kuadran <= TIDAK_PENTING_TIDAK_MENDESAK)
+                jumlahKuadran[kuadran]++;
+        }
     }
 
-    if (!ditemukan)
-        printf("Tidak ada tugas.\n");
+    for (int q = 0; q < 4; q++)
+    {
+        if (jumlahKuadran[q] > 0)
+        {
+            isiKuadran[q] = malloc((size_t)jumlahKuadran[q] * sizeof(struct Tugas *));
+            if (isiKuadran[q] == NULL)
+            {
+                for (int i = 0; i < 4; i++)
+                    free(isiKuadran[i]);
+                printf("Memori tidak cukup untuk menampilkan matrix.\n");
+                return;
+            }
+            jumlahKuadran[q] = 0;
+        }
+    }
 
-    printf("\n=======================================\n");
+    for (int i = 0; i < daftar->jumlah; i++)
+    {
+        struct Tugas *tugas = &daftar->data[i];
+        if (tugas->nama == NULL || tugas->status != TUGAS_BELUM_SELESAI)
+            continue;
+        enum Kuadran kuadran = tentukanKuadran(tugas);
+        if (kuadran >= PENTING_MENDESAK &&
+            kuadran <= TIDAK_PENTING_TIDAK_MENDESAK)
+            isiKuadran[kuadran][jumlahKuadran[kuadran]++] = tugas;
+    }
+
+    const int batasTugasPerKuadran = 4;
+    char judulDenganJumlah[4][64];
+    for (int q = 0; q < 4; q++)
+        snprintf(judulDenganJumlah[q], sizeof(judulDenganJumlah[q]),
+                 "%s (%d)", judulKuadran[q], jumlahKuadran[q]);
+
+    const char *garis = "+------------------------------------+------------------------------------+";
+    printf("\nEISENHOWER MATRIX\n");
+    printf("Kiri: urgent | Atas: penting | Batas urgent: deadline <= 3 hari.\n");
+    printf("%s\n", garis);
+    printf("| %-34.34s | %-34.34s |\n",
+           judulDenganJumlah[0], judulDenganJumlah[1]);
+    printf("%s\n", garis);
+
+    int tampilKiriAtas = jumlahKuadran[0] < batasTugasPerKuadran
+                             ? jumlahKuadran[0]
+                             : batasTugasPerKuadran;
+    int tampilKananAtas = jumlahKuadran[1] < batasTugasPerKuadran
+                              ? jumlahKuadran[1]
+                              : batasTugasPerKuadran;
+    int jumlahBarisAtas = tampilKiriAtas > tampilKananAtas
+                              ? tampilKiriAtas
+                              : tampilKananAtas;
+    for (int row = 0; row < jumlahBarisAtas; row++)
+    {
+        char kiri[35] = "";
+        char kanan[35] = "";
+        char detailKiri[35] = "";
+        char detailKanan[35] = "";
+        if (row < tampilKiriAtas)
+        {
+            struct Tugas *tugas = isiKuadran[0][row];
+            snprintf(kiri, sizeof(kiri), "#%d %.27s", tugas->id, tugas->nama);
+            snprintf(detailKiri, sizeof(detailKiri), "Deadline: %02d-%02d-%04d",
+                     tugas->deadline.tanggal, tugas->deadline.bulan,
+                     tugas->deadline.tahun);
+        }
+        else
+            strcpy(kiri, "Tidak ada tugas");
+        if (row < tampilKananAtas)
+        {
+            struct Tugas *tugas = isiKuadran[1][row];
+            snprintf(kanan, sizeof(kanan), "#%d %.27s", tugas->id, tugas->nama);
+            snprintf(detailKanan, sizeof(detailKanan), "Deadline: %02d-%02d-%04d",
+                     tugas->deadline.tanggal, tugas->deadline.bulan,
+                     tugas->deadline.tahun);
+        }
+        else
+            strcpy(kanan, "Tidak ada tugas");
+        printf("| %-34.34s | %-34.34s |\n", kiri, kanan);
+        if (row < tampilKiriAtas || row < tampilKananAtas)
+            printf("| %-34.34s | %-34.34s |\n", detailKiri, detailKanan);
+    }
+    if (jumlahBarisAtas == 0)
+        printf("| %-34.34s | %-34.34s |\n", "Tidak ada tugas", "Tidak ada tugas");
+    if (jumlahKuadran[0] > batasTugasPerKuadran ||
+        jumlahKuadran[1] > batasTugasPerKuadran)
+    {
+        char kiri[35] = "";
+        char kanan[35] = "";
+        if (jumlahKuadran[0] > batasTugasPerKuadran)
+            snprintf(kiri, sizeof(kiri), "... +%d tugas lagi",
+                     jumlahKuadran[0] - batasTugasPerKuadran);
+        if (jumlahKuadran[1] > batasTugasPerKuadran)
+            snprintf(kanan, sizeof(kanan), "... +%d tugas lagi",
+                     jumlahKuadran[1] - batasTugasPerKuadran);
+        printf("| %-34.34s | %-34.34s |\n", kiri, kanan);
+    }
+
+    printf("%s\n", garis);
+    printf("| %-34.34s | %-34.34s |\n",
+           judulDenganJumlah[2], judulDenganJumlah[3]);
+    printf("%s\n", garis);
+    int tampilKiriBawah = jumlahKuadran[2] < batasTugasPerKuadran
+                              ? jumlahKuadran[2]
+                              : batasTugasPerKuadran;
+    int tampilKananBawah = jumlahKuadran[3] < batasTugasPerKuadran
+                               ? jumlahKuadran[3]
+                               : batasTugasPerKuadran;
+    int jumlahBarisBawah = tampilKiriBawah > tampilKananBawah
+                               ? tampilKiriBawah
+                               : tampilKananBawah;
+    for (int row = 0; row < jumlahBarisBawah; row++)
+    {
+        char kiri[35] = "";
+        char kanan[35] = "";
+        char detailKiri[35] = "";
+        char detailKanan[35] = "";
+        if (row < tampilKiriBawah)
+        {
+            struct Tugas *tugas = isiKuadran[2][row];
+            snprintf(kiri, sizeof(kiri), "#%d %.27s", tugas->id, tugas->nama);
+            snprintf(detailKiri, sizeof(detailKiri), "Deadline: %02d-%02d-%04d",
+                     tugas->deadline.tanggal, tugas->deadline.bulan,
+                     tugas->deadline.tahun);
+        }
+        else
+            strcpy(kiri, "Tidak ada tugas");
+        if (row < tampilKananBawah)
+        {
+            struct Tugas *tugas = isiKuadran[3][row];
+            snprintf(kanan, sizeof(kanan), "#%d %.27s", tugas->id, tugas->nama);
+            snprintf(detailKanan, sizeof(detailKanan), "Deadline: %02d-%02d-%04d",
+                     tugas->deadline.tanggal, tugas->deadline.bulan,
+                     tugas->deadline.tahun);
+        }
+        else
+            strcpy(kanan, "Tidak ada tugas");
+        printf("| %-34.34s | %-34.34s |\n", kiri, kanan);
+        if (row < tampilKiriBawah || row < tampilKananBawah)
+            printf("| %-34.34s | %-34.34s |\n", detailKiri, detailKanan);
+    }
+    if (jumlahBarisBawah == 0)
+        printf("| %-34.34s | %-34.34s |\n", "Tidak ada tugas", "Tidak ada tugas");
+    if (jumlahKuadran[2] > batasTugasPerKuadran ||
+        jumlahKuadran[3] > batasTugasPerKuadran)
+    {
+        char kiri[35] = "";
+        char kanan[35] = "";
+        if (jumlahKuadran[2] > batasTugasPerKuadran)
+            snprintf(kiri, sizeof(kiri), "... +%d tugas lagi",
+                     jumlahKuadran[2] - batasTugasPerKuadran);
+        if (jumlahKuadran[3] > batasTugasPerKuadran)
+            snprintf(kanan, sizeof(kanan), "... +%d tugas lagi",
+                     jumlahKuadran[3] - batasTugasPerKuadran);
+        printf("| %-34.34s | %-34.34s |\n", kiri, kanan);
+    }
+    printf("%s\n", garis);
+
+    int adaDeadlineTidakValid = 0;
+    for (int i = 0; i < daftar->jumlah; i++)
+    {
+        struct Tugas *tugas = &daftar->data[i];
+        if (tugas->nama != NULL && tugas->status == TUGAS_BELUM_SELESAI &&
+            tentukanKuadran(tugas) == KUADRAN_TIDAK_VALID)
+        {
+            if (!adaDeadlineTidakValid)
+                printf("\nTUGAS DENGAN DEADLINE TIDAK VALID\n");
+            adaDeadlineTidakValid = 1;
+            printf("#%d %s\n", tugas->id, tugas->nama);
+        }
+    }
+    for (int q = 0; q < 4; q++)
+        free(isiKuadran[q]);
 }
 // Penyimpanan data
 int simpanTugas(struct DaftarTugas *daftar, const char *namaFile)
@@ -1197,6 +1327,22 @@ static int cliTentukanPathData(char *tujuan, size_t ukuran)
 }
 
 // Helper input CLI, ditambahkan oleh Codex.
+static void cliBersihkanLayar(void)
+{
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
+}
+
+static void cliTungguEnter(void)
+{
+    char baris[8];
+    printf("\nTekan Enter untuk kembali ke matrix...");
+    fgets(baris, sizeof(baris), stdin);
+}
+
 static int cliBacaBaris(const char *prompt, char *buffer, size_t ukuran)
 {
     printf("%s", prompt);
@@ -1245,8 +1391,7 @@ static int cliBacaInt(const char *prompt, int minimum, int maksimum, int *hasil)
     }
 }
 
-static int cliBacaTanggal(const char *prompt, int izinkanTanggalLampau,
-                          struct Tanggal *hasil)
+static int cliBacaTanggal(const char *prompt, int izinkanTanggalLampau, struct Tanggal *hasil)
 {
     char baris[128];
     while (1)
@@ -1344,21 +1489,16 @@ int main(void)
     int selesai = 0;
     while (!selesai)
     {
-        printf("\n=== PENGELOLA TUGAS ===\n"
-               "1. Tambah tugas\n"
-               "2. Tampilkan semua tugas\n"
-               "3. Tampilkan tugas belum selesai\n"
-               "4. Tampilkan tugas selesai\n"
-               "5. Tampilkan tugas overdue\n"
-               "6. Cari tugas berdasarkan nama\n"
-               "7. Lihat detail tugas\n"
-               "8. Edit tugas\n"
-               "9. Ubah status tugas\n"
-               "10. Hapus tugas\n"
-               "11. Tampilkan statistik\n"
-               "12. Tampilkan Eisenhower Matrix\n"
-               "13. Simpan sekarang\n"
-               "0. Simpan dan keluar\n");
+        cliBersihkanLayar();
+        tampilkanMatrix(&daftar);
+        printf("\n========== PENGELOLA TUGAS ==========\n"
+               "TUGAS    1 Tambah | 2 Semua | 3 Belum selesai\n"
+               "         4 Selesai | 5 Overdue\n"
+               "CARI     6 Nama | 7 Detail berdasarkan ID\n"
+               "KELOLA   8 Edit | 9 Ubah status | 10 Hapus\n"
+               "RINGKAS  11 Statistik | 12 Matrix | 13 Simpan\n"
+               "         0 Simpan dan keluar\n"
+               "=====================================\n");
 
         int pilihan;
         if (!cliBacaInt("Pilih menu: ", 0, 13, &pilihan))
@@ -1371,7 +1511,7 @@ int main(void)
         {
             if (cliSimpan(&daftar, fileData))
                 selesai = 1;
-            continue;
+            goto akhirAksi;
         }
 
         if (pilihan == 1)
@@ -1385,7 +1525,7 @@ int main(void)
             if (status < 0 || !validasiInputTugas(nama, 0))
             {
                 printf("Nama tugas tidak valid (maksimal 199 karakter; karakter | tidak boleh dipakai).\n");
-                continue;
+                goto akhirAksi;
             }
             if (!cliBacaInt("Penting? (1=ya, 0=tidak): ", 0, 1, &penting) ||
                 !cliBacaTanggal("Deadline (HH-BB-YYYY): ", 0, &deadline))
@@ -1418,7 +1558,7 @@ int main(void)
             if (status < 0 || kueri[0] == '\0')
             {
                 printf("Kata pencarian tidak boleh kosong.\n");
-                continue;
+                goto akhirAksi;
             }
             int *hasil = daftar.jumlah > 0
                              ? malloc((size_t)daftar.jumlah * sizeof(int))
@@ -1426,7 +1566,7 @@ int main(void)
             if (daftar.jumlah > 0 && hasil == NULL)
             {
                 printf("Memori tidak cukup untuk pencarian.\n");
-                continue;
+                goto akhirAksi;
             }
             int jumlah = cariSemuaIndexByNama(&daftar, kueri, hasil, daftar.jumlah);
             if (jumlah <= 0)
@@ -1445,12 +1585,12 @@ int main(void)
             if (pilihan == 7)
             {
                 cliTampilkanDetail(tugas);
-                continue;
+                goto akhirAksi;
             }
             if (tugas == NULL)
             {
                 printf("Tugas dengan ID %d tidak ditemukan.\n", id);
-                continue;
+                goto akhirAksi;
             }
             if (pilihan == 8)
             {
@@ -1464,7 +1604,7 @@ int main(void)
                 if (status < 0 || !validasiInputTugas(nama, 0))
                 {
                     printf("Nama tugas tidak valid.\n");
-                    continue;
+                    goto akhirAksi;
                 }
                 if (!cliBacaInt("Penting? (1=ya, 0=tidak): ", 0, 1, &penting) ||
                     !cliBacaTanggal("Deadline baru (HH-BB-YYYY): ", 1, &deadline))
@@ -1512,6 +1652,10 @@ int main(void)
             tampilkanMatrix(&daftar);
         else if (pilihan == 13)
             cliSimpan(&daftar, fileData);
+
+    akhirAksi:
+        if (!selesai)
+            cliTungguEnter();
     }
 
     freeDaftarTugas(&daftar);
