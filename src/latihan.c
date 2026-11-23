@@ -529,6 +529,43 @@ int cariSemuaIndexByNama(struct DaftarTugas *daftar, const char *kueri, int *has
 }
 
 // Fungsi ini ditambahkan oleh Codex.
+int ambilIndexTugasDenganFilter(struct DaftarTugas *daftar, int statusFilter,
+                               int hanyaOverdue, const char *kueri,
+                               int *hasil, int kapasitasHasil)
+{
+    if (daftar == NULL || daftar->data == NULL || daftar->jumlah < 0 ||
+        daftar->jumlah > daftar->kapasitas || kapasitasHasil < 0 ||
+        (kapasitasHasil > 0 && hasil == NULL) ||
+        (statusFilter != -1 && statusFilter != TUGAS_BELUM_SELESAI &&
+         statusFilter != TUGAS_SELESAI) ||
+        (hanyaOverdue != 0 && hanyaOverdue != 1))
+    {
+        return -1;
+    }
+
+    int jumlahCocok = 0;
+    for (int i = 0; i < daftar->jumlah; i++)
+    {
+        struct Tugas *tugas = &daftar->data[i];
+        if (tugas->nama == NULL ||
+            (statusFilter >= 0 && (int)tugas->status != statusFilter) ||
+            (hanyaOverdue && (tugas->status != TUGAS_BELUM_SELESAI ||
+                              cekStatusDeadline(tugas) != -1)) ||
+            (kueri != NULL && kueri[0] != '\0' &&
+             !namaMengandung(tugas->nama, kueri)))
+        {
+            continue;
+        }
+
+        if (jumlahCocok < kapasitasHasil)
+            hasil[jumlahCocok] = i;
+        jumlahCocok++;
+    }
+
+    return jumlahCocok;
+}
+
+// Fungsi ini ditambahkan oleh Codex.
 struct Tugas *ambilDetailTugas(struct DaftarTugas *daftar, int id)
 {
     int index = cariIndexByID(daftar, id);

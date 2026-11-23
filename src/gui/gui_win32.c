@@ -368,36 +368,30 @@ static void rebuildView(void)
             wideToUtf8(wideQuery, query, sizeof(query));
         }
 
-        int *indeksCocok = NULL;
-        int jumlahCocok = g_daftar.jumlah;
-        if (query[0] != '\0')
+        int *indeksCocok = g_daftar.jumlah > 0
+                               ? malloc((size_t)g_daftar.jumlah * sizeof(int))
+                               : NULL;
+        if (g_daftar.jumlah > 0 && indeksCocok == NULL)
         {
-            indeksCocok = malloc((size_t)g_daftar.jumlah * sizeof(int));
-            if (g_daftar.jumlah > 0 && indeksCocok == NULL)
-            {
-                setToast(L"Memori tidak cukup untuk mencari tugas.");
-                return;
-            }
-            jumlahCocok = cariSemuaIndexByNama(&g_daftar, query,
-                                               indeksCocok, g_daftar.jumlah);
-            if (jumlahCocok < 0)
-            {
-                free(indeksCocok);
-                return;
-            }
+            setToast(L"Memori tidak cukup untuk memfilter tugas.");
+            return;
+        }
+
+        int statusFilter = g_page == HALAMAN_SELESAI ? TUGAS_SELESAI : -1;
+        int overdueOnly = g_page == HALAMAN_OVERDUE;
+        int jumlahCocok = ambilIndexTugasDenganFilter(
+            &g_daftar, statusFilter, overdueOnly, query,
+            indeksCocok, g_daftar.jumlah);
+        if (jumlahCocok < 0)
+        {
+            free(indeksCocok);
+            return;
         }
 
         for (int i = 0; i < jumlahCocok; i++)
         {
-            int index = query[0] == '\0' ? i : indeksCocok[i];
+            int index = indeksCocok[i];
             struct Tugas *task = &g_daftar.data[index];
-            if (task->nama == NULL)
-                continue;
-            if (g_page == HALAMAN_SELESAI && task->status != TUGAS_SELESAI)
-                continue;
-            if (g_page == HALAMAN_OVERDUE &&
-                (task->status != TUGAS_BELUM_SELESAI || cekStatusDeadline(task) != -1))
-                continue;
             g_visibleIDs[g_visibleCount++] = task->id;
         }
         free(indeksCocok);
