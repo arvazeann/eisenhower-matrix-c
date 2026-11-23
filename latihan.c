@@ -451,6 +451,52 @@ int cariIndexByID(struct DaftarTugas *daftar, int id)
     return -1;
 }
 
+int namaMengandung(const char *nama, const char *kueri)
+{
+    if (nama == NULL || kueri == NULL || kueri[0] == '\0')
+        return 0;
+
+    for (const char *awal = nama; *awal != '\0'; awal++)
+    {
+        const char *teks = awal;
+        const char *cari = kueri;
+
+        while (*teks != '\0' && *cari != '\0' &&
+               tolower((unsigned char)*teks) == tolower((unsigned char)*cari))
+        {
+            teks++;
+            cari++;
+        }
+
+        if (*cari == '\0')
+            return 1;
+    }
+
+    return 0;
+}
+
+int cariIndexByNama(struct DaftarTugas *daftar, const char *kueri)
+{
+    if (daftar == NULL || daftar->data == NULL || kueri == NULL ||
+        kueri[0] == '\0' || daftar->jumlah < 0 ||
+        daftar->jumlah > daftar->kapasitas)
+    {
+        return -1;
+    }
+
+    for (int i = 0; i < daftar->jumlah; i++)
+    {
+        const char *nama = daftar->data[i].nama;
+        if (nama == NULL)
+            continue;
+
+        if (namaMengandung(nama, kueri))
+            return i;
+    }
+
+    return -1;
+}
+
 int tambahTugas(struct DaftarTugas *daftar, const char *nama, int penting, struct Tanggal deadline)
 {
     if (daftar == NULL || daftar->data == NULL)
@@ -572,7 +618,7 @@ int editTugas(struct DaftarTugas *daftar, int id, const char *namaBaru, int pent
     if (!validasiInputTugas(namaBaru, pentingBaru))
         return 0;
 
-    if (!validasiTanggal(&deadlineBaru))
+    if (!validasiTanggalKalender(&deadlineBaru))
         return 0;
 
     int index = cariIndexByID(daftar, id);
@@ -934,6 +980,7 @@ int muatTugas(struct DaftarTugas *daftar, const char *namaFile)
     return 1;
 }
 
+#ifndef EISENHOWER_GUI
 int main()
 {
     struct DaftarTugas daftar;
@@ -1084,3 +1131,4 @@ int main()
 
     return 0;
 }
+#endif
