@@ -404,6 +404,7 @@ int ubahKapasitas(struct DaftarTugas *daftar, int kapasitasBaru)
         return 0;
 
     if (kapasitasBaru < 2 ||
+        daftar->kapasitas < 0 ||
         daftar->jumlah < 0 ||
         daftar->jumlah > daftar->kapasitas ||
         kapasitasBaru < daftar->jumlah)
@@ -516,7 +517,8 @@ int hapusTugas(struct DaftarTugas *daftar, int id)
     if (daftar == NULL || daftar->data == NULL)
         return 0;
 
-    if (daftar->jumlah <= 0 ||
+    if (daftar->kapasitas < 2 ||
+        daftar->jumlah <= 0 ||
         daftar->jumlah > daftar->kapasitas)
     {
         return 0;
@@ -543,7 +545,7 @@ int hapusTugas(struct DaftarTugas *daftar, int id)
 
         if (!ubahKapasitas(daftar, newKapasitas))
         {
-            printf("Warning memory penuh...");
+            printf("Warning: Gagal mengecilkan kapasitas array.\n");
         }
     }
 
@@ -604,50 +606,67 @@ void tampilkanMatrix(struct DaftarTugas *daftar)
         return;
     }
 
+    const char *judulKuadran[] =
+        {
+            "I. PENTING & MENDESAK",
+            "II. PENTING & TIDAK MENDESAK",
+            "III. TIDAK PENTING & MENDESAK",
+            "IV. TIDAK PENTING & TIDAK MENDESAK"};
+
     printf("\n========== EISENHOWER MATRIX ==========\n");
+
+    for (int q = PENTING_MENDESAK;
+         q <= TIDAK_PENTING_TIDAK_MENDESAK;
+         q++)
+    {
+        printf("\n[ %s ]\n", judulKuadran[q]);
+
+        int ditemukan = 0;
+
+        for (int i = 0; i < daftar->jumlah; i++)
+        {
+            if (daftar->data[i].nama == NULL ||
+                daftar->data[i].status != TUGAS_BELUM_SELESAI)
+                continue;
+
+            if (tentukanKuadran(&daftar->data[i]) != (enum Kuadran)q)
+                continue;
+
+            ditemukan = 1;
+
+            printf("ID       : %d\n", daftar->data[i].id);
+            printf("Nama     : %s\n", daftar->data[i].nama);
+            printf("Deadline : %02d-%02d-%04d\n",
+                   daftar->data[i].deadline.tanggal,
+                   daftar->data[i].deadline.bulan,
+                   daftar->data[i].deadline.tahun);
+            printf("-----------------------------\n");
+        }
+
+        if (!ditemukan)
+            printf("Tidak ada tugas.\n");
+    }
+
+    printf("\n[ TUGAS DENGAN DEADLINE TIDAK VALID ]\n");
+
+    int ditemukan = 0;
 
     for (int i = 0; i < daftar->jumlah; i++)
     {
-        if (daftar->data[i].nama == NULL)
+        if (daftar->data[i].nama == NULL ||
+            daftar->data[i].status != TUGAS_BELUM_SELESAI)
             continue;
 
-        if (daftar->data[i].status == TUGAS_SELESAI)
-        {
+        if (tentukanKuadran(&daftar->data[i]) != KUADRAN_TIDAK_VALID)
             continue;
-        }
 
-        enum Kuadran kuadran = tentukanKuadran(&daftar->data[i]);
-
-        switch (kuadran)
-        {
-        case PENTING_MENDESAK:
-            printf("\n[ I. PENTING & MENDESAK ]\n");
-            break;
-
-        case PENTING_TIDAK_MENDESAK:
-            printf("\n[ II. PENTING & TIDAK MENDESAK ]\n");
-            break;
-
-        case TIDAK_PENTING_MENDESAK:
-            printf("\n[ III. TIDAK PENTING & MENDESAK ]\n");
-            break;
-
-        case TIDAK_PENTING_TIDAK_MENDESAK:
-            printf("\n[ IV. TIDAK PENTING & TIDAK MENDESAK ]\n");
-            break;
-
-        case KUADRAN_TIDAK_VALID:
-            printf("\n[ DEADLINE TIDAK VALID ]\n");
-            break;
-        }
-
-        printf("ID       : %d\n", daftar->data[i].id);
-        printf("Nama     : %s\n", daftar->data[i].nama);
-        printf("Deadline : %02d-%02d-%04d\n",
-               daftar->data[i].deadline.tanggal,
-               daftar->data[i].deadline.bulan,
-               daftar->data[i].deadline.tahun);
+        ditemukan = 1;
+        printf("ID   : %d\n", daftar->data[i].id);
+        printf("Nama : %s\n", daftar->data[i].nama);
     }
+
+    if (!ditemukan)
+        printf("Tidak ada tugas.\n");
 
     printf("\n=======================================\n");
 }
@@ -687,6 +706,7 @@ int simpanTugas(struct DaftarTugas *daftar, const char *namaFile)
         return 0;
 
     if (daftar->jumlah < 0 ||
+        daftar->kapasitas < 0 ||
         daftar->jumlah > daftar->kapasitas ||
         (daftar->jumlah > 0 && daftar->data == NULL))
     {
@@ -703,6 +723,12 @@ int simpanTugas(struct DaftarTugas *daftar, const char *namaFile)
              daftar->data[i].status != TUGAS_BELUM_SELESAI))
         {
             return 0;
+        }
+
+        for (int j = i + 1; j < daftar->jumlah; j++)
+        {
+            if (daftar->data[i].id == daftar->data[j].id)
+                return 0;
         }
     }
 
@@ -745,6 +771,7 @@ int muatTugas(struct DaftarTugas *daftar, const char *namaFile)
     if (daftar->data == NULL ||
         daftar->jumlah != 0 ||
         daftar->kapasitas < 2 ||
+        daftar->jumlah > daftar->kapasitas ||
         daftar->idBerikut <= 0)
     {
         return 0;
@@ -923,7 +950,7 @@ int main()
     printf("=== PENGUJIAN BACKEND EISENHOWER MATRIX ===\n");
 
     // 2. Memuat data
-    if (muatTugas(&daftar, "tugas.txt"))
+    if (muatTugas(&daftar, "tugas_test.txt"))
     {
         printf("Data berhasil dimuat.\n");
     }
@@ -931,6 +958,15 @@ int main()
     {
         printf("File belum tersedia atau gagal dimuat.\n");
     }
+
+    // Mulai dari data kosong agar hasil pengujian tidak bertambah tiap dijalankan.
+    for (int i = 0; i < daftar.jumlah; i++)
+    {
+        free(daftar.data[i].nama);
+        daftar.data[i].nama = NULL;
+    }
+    daftar.jumlah = 0;
+    daftar.idBerikut = 1;
 
     // 3. Menampilkan data awal
     printf("\nJumlah tugas awal: %d\n", daftar.jumlah);
@@ -940,13 +976,18 @@ int main()
     struct Tanggal deadline2 = {23, 11, 2026};
     struct Tanggal deadline3 = {28, 11, 2026};
 
+    int idPointer = 0;
+    int idLaporan = 0;
+
     if (tambahTugas(&daftar, "Belajar Pointer", 1, deadline1))
     {
+        idPointer = daftar.idBerikut - 1;
         printf("Berhasil menambahkan Belajar Pointer.\n");
     }
 
     if (tambahTugas(&daftar, "Mengerjakan Laporan", 1, deadline2))
     {
+        idLaporan = daftar.idBerikut - 1;
         printf("Berhasil menambahkan Mengerjakan Laporan.\n");
     }
 
@@ -970,8 +1011,10 @@ int main()
             daftar.data[i].status);
     }
 
+    tampilkanMatrix(&daftar);
+
     // 6. Menguji pencarian ID
-    int idCari = 1;
+    int idCari = idPointer;
     int index = cariIndexByID(&daftar, idCari);
 
     if (index != -1)
@@ -1004,7 +1047,7 @@ int main()
     }
 
     // 9. Menguji penghapusan
-    if (hapusTugas(&daftar, 2))
+    if (hapusTugas(&daftar, idLaporan))
     {
         printf("Tugas ID 2 berhasil dihapus.\n");
     }
@@ -1025,7 +1068,7 @@ int main()
     }
 
     // 11. Menyimpan data
-    if (simpanTugas(&daftar, "tugas.txt"))
+    if (simpanTugas(&daftar, "tugas_test.txt"))
     {
         printf("\nData berhasil disimpan.\n");
     }
