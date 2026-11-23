@@ -5,6 +5,9 @@
 #include <limits.h>
 #include <stdint.h>
 #include <ctype.h>
+#if defined(_WIN32) && !defined(EISENHOWER_GUI)
+#include <windows.h>
+#endif
 
 enum StatusTugas
 {
@@ -1140,6 +1143,59 @@ int muatTugas(struct DaftarTugas *daftar, const char *namaFile)
 }
 
 #ifndef EISENHOWER_GUI
+static int cliTentukanPathData(char *tujuan, size_t ukuran)
+{
+#ifdef _WIN32
+    char executable[MAX_PATH];
+    DWORD panjang = GetModuleFileNameA(NULL, executable, MAX_PATH);
+    if (panjang == 0 || panjang >= MAX_PATH)
+        return 0;
+
+    char *slash = strrchr(executable, '\\');
+    char *slashMiring = strrchr(executable, '/');
+    if (slashMiring != NULL && (slash == NULL || slashMiring > slash))
+        slash = slashMiring;
+    if (slash == NULL)
+        return 0;
+    *slash = '\0';
+
+    char direktoriData[MAX_PATH];
+    int panjangPath = snprintf(direktoriData, sizeof(direktoriData),
+                               "%s\\data", executable);
+    DWORD atribut = panjangPath > 0 && panjangPath < (int)sizeof(direktoriData)
+                        ? GetFileAttributesA(direktoriData)
+                        : INVALID_FILE_ATTRIBUTES;
+
+    if (atribut == INVALID_FILE_ATTRIBUTES ||
+        !(atribut & FILE_ATTRIBUTE_DIRECTORY))
+    {
+        slash = strrchr(executable, '\\');
+        slashMiring = strrchr(executable, '/');
+        if (slashMiring != NULL && (slash == NULL || slashMiring > slash))
+            slash = slashMiring;
+        if (slash == NULL)
+            return 0;
+        *slash = '\0';
+
+        panjangPath = snprintf(direktoriData, sizeof(direktoriData),
+                               "%s\\data", executable);
+        atribut = panjangPath > 0 && panjangPath < (int)sizeof(direktoriData)
+                      ? GetFileAttributesA(direktoriData)
+                      : INVALID_FILE_ATTRIBUTES;
+    }
+
+    if (atribut == INVALID_FILE_ATTRIBUTES ||
+        !(atribut & FILE_ATTRIBUTE_DIRECTORY))
+        return 0;
+
+    int hasil = snprintf(tujuan, ukuran, "%s\\tugas.txt", direktoriData);
+    return hasil > 0 && (size_t)hasil < ukuran;
+#else
+    int hasil = snprintf(tujuan, ukuran, "data/tugas.txt");
+    return hasil > 0 && (size_t)hasil < ukuran;
+#endif
+}
+
 // Helper input CLI, ditambahkan oleh Codex.
 static int cliBacaBaris(const char *prompt, char *buffer, size_t ukuran)
 {
@@ -1252,12 +1308,19 @@ static int cliSimpan(struct DaftarTugas *daftar, const char *fileData)
 // main interaktif menggantikan skenario dummy; disusun oleh Codex.
 int main(void)
 {
-    const char *fileData = "data/tugas.txt";
+    char fileData[1024];
     struct DaftarTugas daftar;
     initDaftarTugas(&daftar);
     if (daftar.data == NULL)
     {
         printf("Memori tidak cukup untuk memulai.\n");
+        return 1;
+    }
+
+    if (!cliTentukanPathData(fileData, sizeof(fileData)))
+    {
+        printf("Lokasi folder data tidak ditemukan. Jalankan program dari folder proyek.\n");
+        freeDaftarTugas(&daftar);
         return 1;
     }
 

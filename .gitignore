@@ -1,4 +1,5 @@
 build/*.exe
 build/*.o
+src/*.exe
 tests/*.exe
 .vscode/
