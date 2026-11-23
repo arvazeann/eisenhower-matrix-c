@@ -91,48 +91,7 @@ void freeDaftarTugas(struct DaftarTugas *daftar)
     daftar->idBerikut = 1;
 }
 
-// Sorting
-int bandingkanTanggal(struct Tanggal a, struct Tanggal b)
-{
-    if (a.tahun != b.tahun)
-        return (a.tahun > b.tahun) ? 1 : -1;
-
-    if (a.bulan != b.bulan)
-        return (a.bulan > b.bulan) ? 1 : -1;
-
-    if (a.tanggal != b.tanggal)
-        return (a.tanggal > b.tanggal) ? 1 : -1;
-
-    return 0;
-}
-
-void insertionSortDeadline(struct DaftarTugas *daftar)
-{
-    if (daftar == NULL || daftar->data == NULL ||
-        daftar->jumlah < 2 || daftar->jumlah > daftar->kapasitas)
-    {
-        return;
-    }
-
-    for (int i = 1; i < daftar->jumlah; i++)
-    {
-        struct Tugas key = daftar->data[i];
-
-        int j = i - 1;
-
-        while (
-            j >= 0 &&
-            bandingkanTanggal(daftar->data[j].deadline, key.deadline) > 0)
-        {
-            daftar->data[j + 1] = daftar->data[j];
-            j--;
-        }
-
-        daftar->data[j + 1] = key;
-    }
-}
-
-// Validasi Input
+// Validasi Tanggal
 struct Tanggal ambilTanggalSekarang(void)
 {
     time_t sekarang = time(NULL);
@@ -294,6 +253,48 @@ int hitungSelisihHari(struct Tanggal *tanggal)
     return (int)jumlahHari;
 }
 
+// Sorting
+int bandingkanTanggal(struct Tanggal a, struct Tanggal b)
+{
+    if (a.tahun != b.tahun)
+        return (a.tahun > b.tahun) ? 1 : -1;
+
+    if (a.bulan != b.bulan)
+        return (a.bulan > b.bulan) ? 1 : -1;
+
+    if (a.tanggal != b.tanggal)
+        return (a.tanggal > b.tanggal) ? 1 : -1;
+
+    return 0;
+}
+
+void insertionSortDeadline(struct DaftarTugas *daftar)
+{
+    if (daftar == NULL || daftar->data == NULL ||
+        daftar->jumlah < 2 || daftar->jumlah > daftar->kapasitas)
+    {
+        return;
+    }
+
+    for (int i = 1; i < daftar->jumlah; i++)
+    {
+        struct Tugas key = daftar->data[i];
+
+        int j = i - 1;
+
+        while (
+            j >= 0 &&
+            bandingkanTanggal(daftar->data[j].deadline, key.deadline) > 0)
+        {
+            daftar->data[j + 1] = daftar->data[j];
+            j--;
+        }
+
+        daftar->data[j + 1] = key;
+    }
+}
+
+// Klasifikasi deadline
 int cekStatusDeadline(struct Tugas *tugas)
 {
     if (tugas == NULL)
@@ -558,46 +559,6 @@ int tambahTugas(struct DaftarTugas *daftar, const char *nama, int penting, struc
     return 1;
 }
 
-int hapusTugas(struct DaftarTugas *daftar, int id)
-{
-    if (daftar == NULL || daftar->data == NULL)
-        return 0;
-
-    if (daftar->kapasitas < 2 ||
-        daftar->jumlah <= 0 ||
-        daftar->jumlah > daftar->kapasitas)
-    {
-        return 0;
-    }
-
-    int index = cariIndexByID(daftar, id);
-
-    if (index == -1)
-        return 0;
-
-    free(daftar->data[index].nama);
-
-    for (int i = index; i < daftar->jumlah - 1; i++)
-    {
-        daftar->data[i] = daftar->data[i + 1];
-    }
-
-    daftar->jumlah--;
-
-    if (daftar->jumlah <= daftar->kapasitas / 4 && daftar->kapasitas > 2)
-    {
-        int newKapasitas = daftar->kapasitas / 2;
-        newKapasitas = (newKapasitas < 2) ? 2 : newKapasitas;
-
-        if (!ubahKapasitas(daftar, newKapasitas))
-        {
-            printf("Warning: Gagal mengecilkan kapasitas array.\n");
-        }
-    }
-
-    return 1;
-}
-
 int editTugas(struct DaftarTugas *daftar, int id, const char *namaBaru, int pentingBaru, struct Tanggal deadlineBaru)
 {
     if (daftar == NULL || daftar->data == NULL)
@@ -643,6 +604,75 @@ int editTugas(struct DaftarTugas *daftar, int id, const char *namaBaru, int pent
     return 1;
 }
 
+int hapusTugas(struct DaftarTugas *daftar, int id)
+{
+    if (daftar == NULL || daftar->data == NULL)
+        return 0;
+
+    if (daftar->kapasitas < 2 ||
+        daftar->jumlah <= 0 ||
+        daftar->jumlah > daftar->kapasitas)
+    {
+        return 0;
+    }
+
+    int index = cariIndexByID(daftar, id);
+
+    if (index == -1)
+        return 0;
+
+    free(daftar->data[index].nama);
+
+    for (int i = index; i < daftar->jumlah - 1; i++)
+    {
+        daftar->data[i] = daftar->data[i + 1];
+    }
+
+    daftar->jumlah--;
+
+    if (daftar->jumlah <= daftar->kapasitas / 4 && daftar->kapasitas > 2)
+    {
+        int newKapasitas = daftar->kapasitas / 2;
+        newKapasitas = (newKapasitas < 2) ? 2 : newKapasitas;
+
+        if (!ubahKapasitas(daftar, newKapasitas))
+        {
+            printf("Warning: Gagal mengecilkan kapasitas array.\n");
+        }
+    }
+
+    return 1;
+}
+
+// Status Tugas
+int ubahStatusTugas(struct DaftarTugas *daftar, int id, enum StatusTugas statusBaru)
+{
+    if (daftar == NULL || daftar->data == NULL)
+        return 0;
+
+    if (daftar->jumlah < 0 ||
+        daftar->jumlah > daftar->kapasitas)
+    {
+        return 0;
+    }
+
+    if (statusBaru != TUGAS_SELESAI &&
+        statusBaru != TUGAS_BELUM_SELESAI)
+    {
+        return 0;
+    }
+
+    int index = cariIndexByID(daftar, id);
+
+    if (index == -1)
+        return 0;
+
+    daftar->data[index].status = statusBaru;
+
+    return 1;
+}
+
+// Tampilan matrix
 void tampilkanMatrix(struct DaftarTugas *daftar)
 {
     if (daftar == NULL || daftar->data == NULL ||
@@ -717,35 +747,7 @@ void tampilkanMatrix(struct DaftarTugas *daftar)
     printf("\n=======================================\n");
 }
 
-// Status Tugas
-int ubahStatusTugas(struct DaftarTugas *daftar, int id, enum StatusTugas statusBaru)
-{
-    if (daftar == NULL || daftar->data == NULL)
-        return 0;
-
-    if (daftar->jumlah < 0 ||
-        daftar->jumlah > daftar->kapasitas)
-    {
-        return 0;
-    }
-
-    if (statusBaru != TUGAS_SELESAI &&
-        statusBaru != TUGAS_BELUM_SELESAI)
-    {
-        return 0;
-    }
-
-    int index = cariIndexByID(daftar, id);
-
-    if (index == -1)
-        return 0;
-
-    daftar->data[index].status = statusBaru;
-
-    return 1;
-}
-
-// Simpan tugas
+// Simpan dan muat data
 int simpanTugas(struct DaftarTugas *daftar, const char *namaFile)
 {
     if (daftar == NULL || namaFile == NULL || namaFile[0] == '\0')

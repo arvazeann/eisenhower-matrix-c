@@ -1,17 +1,28 @@
 # Eisenhower Matrix
 
-Aplikasi desktop Windows untuk mengelola tugas dengan backend C yang sudah ada di `latihan.c`. GUI native Win32 menjadi antarmuka utama; backend tetap menangani dynamic array, validasi, sorting deadline, CRUD, pencarian, matrix, dan file TXT.
+Aplikasi desktop Windows untuk mengelola tugas. Backend C berada di `src/latihan.c`, sedangkan GUI native Win32 berada di `src/gui/gui_win32.c`. Backend menangani dynamic array, validasi, sorting deadline, CRUD, pencarian, matrix, dan file TXT.
 
 ## Build dan jalankan
 
-Gunakan GCC MinGW-w64, misalnya terminal MSYS2 UCRT64. Jalankan `build_gui.bat`, lalu buka `EisenhowerMatrix.exe`. Data aplikasi disimpan di `tugas.txt` di folder yang sama dengan executable.
+Gunakan GCC MinGW-w64, misalnya terminal MSYS2 UCRT64. Jalankan `build_gui.bat`, lalu buka `build/EisenhowerMatrix.exe` untuk aplikasi GUI. CLI pada `src/latihan.c` dan GUI memakai file data yang sama, yaitu `data/tugas.txt`.
 
 Build manual dari terminal MSYS2 UCRT64:
 
 ```sh
-windres gui_resources.rc -O coff -o gui_resources.o
-gcc gui_win32.c gui_resources.o -o EisenhowerMatrix.exe -std=c11 -Wall -Wextra -Wpedantic -mwindows -lcomctl32
+cd resources
+windres gui_resources.rc -O coff -o ../build/gui_resources.o
+cd ..
+gcc src/gui/gui_win32.c build/gui_resources.o -I src -o build/EisenhowerMatrix.exe -std=c11 -Wall -Wextra -Wpedantic -mwindows -lcomctl32
 ```
+
+## Struktur folder
+
+- `src/` berisi backend C dan GUI Win32.
+- `resources/` berisi resource GUI dan manifest aplikasi.
+- `data/` berisi data tugas aplikasi.
+- `tests/` berisi executable dan data pengujian.
+- `build/` berisi hasil build.
+- `docs/` disediakan untuk dokumentasi tambahan.
 
 ## Fitur
 

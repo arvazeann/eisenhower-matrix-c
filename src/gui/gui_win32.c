@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "latihan.c"
+#include "../latihan.c"
 
 #define ID_SEARCH             1001
 #define ID_ADD                1004
@@ -1484,19 +1484,19 @@ static void makeDataPath(void)
     DWORD length = GetModuleFileNameA(NULL, g_dataFile, MAX_PATH);
     if (length == 0 || length >= MAX_PATH)
     {
-        strcpy(g_dataFile, "tugas.txt");
+        strcpy(g_dataFile, "..\\data\\tugas.txt");
         return;
     }
     char *slash = strrchr(g_dataFile, '\\');
     char *forwardSlash = strrchr(g_dataFile, '/');
     if (forwardSlash != NULL && (slash == NULL || forwardSlash > slash))
         slash = forwardSlash;
-    if (slash == NULL || (size_t)(slash - g_dataFile) + 12 >= sizeof(g_dataFile))
+    if (slash == NULL || (size_t)(slash - g_dataFile) + sizeof("..\\data\\tugas.txt") > sizeof(g_dataFile))
     {
-        strcpy(g_dataFile, "tugas.txt");
+        strcpy(g_dataFile, "..\\data\\tugas.txt");
         return;
     }
-    strcpy(slash + 1, "tugas.txt");
+    strcpy(slash + 1, "..\\data\\tugas.txt");
 }
 
 static HFONT createFont(int height, int weight)
